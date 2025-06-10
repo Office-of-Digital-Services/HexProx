@@ -12,7 +12,7 @@ STREAMING_WMTS_URL = "https://services.hxgncontent.com/streaming/wmts?/"
 
 PARAMS = "1.0.0/HxGN_Imagery/default/WebMercator/"
 
-
+HEXAGON_TILE_EXTENSIONS = ["jpg", "png", "xxx", "txt", "html", "gml"]
 # ZOOMS = {10: (list(range()))
 
 class HexagonManager():
@@ -63,7 +63,7 @@ class HexagonManager():
         url = self.wmts_url + f"{path}&access_token={self.token}"
         return requests.get(url)
 
-    def get_tile(self, matrix, row, col, path=None, stream=False, url_only=True):
+    def get_tile(self, matrix, row, col, path=None, stream=False, url_only=False, extension="png"):
         """
             Automatically composes the correct request to the WMS server for the tile, then returns the path to the downloaded tile.
             Returns the path to the downloaded tile if it downloaded one, otherwise raises the HTTP status code the server provided.
@@ -72,10 +72,10 @@ class HexagonManager():
             matrix (_type_): The WMTS tile matrix (ie Zoom) to request tiles from
             row (_type_): The WMTS row within the tile matrix (ie, y)
             col (_type_): The WMTS column within the tile matrix (ie, x)
-            path (str or None): The full output path for the downloaded tile, including ".jpg" extension. If None, then a path in Temp will be generated.
+            path (str or None): The full output path for the downloaded tile, including tile extension. If None, then a path in Temp will be generated.
         """
-        filename = os.path.join(str(matrix), str(row), f"{col}.jpg")
-        file_url = f"{matrix}/{row}/{col}.jpg"
+        filename = os.path.join(str(matrix), str(row), f"{col}.{extension}")
+        file_url = f"{matrix}/{row}/{col}.{extension}"
         url = self.wmts_url + self.url_params + f"{file_url}&access_token={self.token}"
         print(f"fetching {url}")
 
