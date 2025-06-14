@@ -65,8 +65,6 @@ async def get_wmts(client_id: str, client_secret: str, matrix: int, row: int, co
             for data in response.iter_content(chunk_size=1024):
                 yield data
 
-        print(f"RESPONSE: {response}")
-
         return StreamingResponse(iter_response())
     else:
         return RedirectResponse(client.get_tile(matrix=matrix, row=row, col=col, url_only=True))
@@ -86,33 +84,6 @@ async def get_wmts_general(client_id: str, client_secret: str, rest_of_path: str
     rewritten_content = response.content.decode("utf-8").replace("https://services.hxgncontent.com/streaming/wmts?/", current_base_url)
 
     return Response(status_code=response.status_code,
-                    #headers=response.headers,
+                    #headers=response.headers,  # we may still want to translate *some* of these over
                     media_type="application/xml",
                     content=rewritten_content)
-
-    #return Response(status_code=200, content="<xml>hi</xml>!", media_type="application/xml")
-
-
-"""
-@app.get("/wmts/{client_id}/{client_secret}/{rest_of_path:path}", response_class=Response)
-async def get_wmts_general(client_id: str, client_secret: str, rest_of_path: str, request: Request):
-    #try:
-    client = get_client(client_id, client_secret)
-    response = client.get_general_response(rest_of_path)
-
-    if "content-encoding" in response.headers:
-        del response.headers["content-encoding"]
-
-    current_base_url = f"{request.base_url}wmts/{client_id}/{client_secret}/"
-    rewritten_content = response.content.decode("utf-8").replace("https://services.hxgncontent.com/streaming/wmts?/", current_base_url)
-
-    print(rewritten_content)
-
-    r = Response(status_code=response.status_code,
-                    headers=response.headers,
-                    media_type="application/xml",
-                    content=rewritten_content)
-    return r
-    #except:
-    #    return Response("Failed to run properly", status_code=500, media_type="text/plain")
-"""
