@@ -20,6 +20,12 @@ class HexagonManager():
         self._token_info = None
         self._reauthorize_after = datetime.now(tz=UTC)
         self.token_url = token_url
+
+
+        if len(client_id) > 80 or len(client_secret) > 80 or " " in client_id or " " in client_secret or ";" in client_id or ";" in client_secret:
+            # some observed at 44 char, some at 24. This is just a sanity check. Also disallow spaces and semicolons to delimit statements to block attempted code injections early, without sending to Hexagon
+            raise PermissionError("Invalid client ID or secret")
+
         self.client_id = client_id
         self.client_secret = client_secret
 
@@ -47,8 +53,7 @@ class HexagonManager():
             body["reauthorize_after"] = reauthorize_dt
             return body
         else:
-            raise RuntimeError(
-                f"Couldn't get access token, server returned status code {response.status_code} and message {response.content}")
+            raise PermissionError(f"Couldn't get access token, server returned status code {response.status_code} and message {response.content}")
 
     @property
     def token(self):

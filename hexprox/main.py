@@ -48,14 +48,18 @@ async def get_wmts(client_id: str, client_secret: str, matrix: int, row: int, co
     if ext not in HEXAGON_TILE_EXTENSIONS:
         return Response(status_code=404, content=f"File extension {ext} not supported")
 
-    print(request.url)
-
-    client = get_client(client_id, client_secret)
+    try:
+        client = get_client(client_id, client_secret)
+    except PermissionError:
+        return Response(status_code=403, content="Invalid credentials or inability to communicate with credential server")
 
     if "Origin" in request.headers and ("ca.gov" in request.headers["Origin"] or "arcgis.com" in request.headers["Origin"]): # trying to catch if this is in a web browser rather than a desktop client  # and "arcgis.com" in request.headers["Origin"]:  # this likely applies if *any* Origin is included since it's a CORS issue that causes us to need to stream it
         # we may still want to open this check up, but trying to limit it so we don't pay out tiles for random people's web maps if they happen to capture a URL.
         # when invoked via a request from a browser, we get CORS issues unless we proxy the tile data too, but it's slower and costs more, so we want to avoid it when possible
-        response = client.get_tile(matrix=matrix, row=row, col=col, stream=True, url_only=False)
+        try:
+            response = client.get_tile(matrix=matrix, row=row, col=col, stream=True, url_only=False)
+        except PermissionError:
+            return Response(status_code=403, content="Invalid credentials or inability to communicate with credential server")
 
         def iter_response():
             for data in response.iter_content(chunk_size=1024):
@@ -69,8 +73,11 @@ async def get_wmts(client_id: str, client_secret: str, matrix: int, row: int, co
 
 @app.get("/wmts/{client_id}/{client_secret}/{rest_of_path:path}")
 async def get_wmts_general(client_id: str, client_secret: str, rest_of_path: str, request: Request) -> Response:
-    client = get_client(client_id, client_secret)
-    response = client.get_general_response(rest_of_path)
+    try:
+        client = get_client(client_id, client_secret)
+        response = client.get_general_response(rest_of_path)
+    except PermissionError:  # this is still too coarse - we should raise better errors in Hexagon.py to differentiate here.
+        return Response(status_code=403, content="Invalid credentials or inability to communicate with credential server")
 
     if "content-encoding" in response.headers:
         del response.headers["content-encoding"]
