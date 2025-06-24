@@ -1,14 +1,14 @@
-trigger: dev
-pr: dev
-
+trigger: 
+  branches:
+    include:
+      - dev
 pool:
   vmImage: ubuntu-latest
 
 variables:
   - name: python_version
     value: '3.12'
-  - name: architecture
-    value: 'x64'
+
 
 stages:
 
@@ -18,10 +18,11 @@ stages:
     - job: Build
       displayName: Building
       steps:
-      - task: UsePython@0
+      - task: UsePythonVersion@0
         inputs:
           versionSpec: $(python_version)
-          architecture: $(architecture)
+          addToPath: true
+          architecture: 'x64'
       - bash : |
           pip install --target="./.python_packages/lib/site-packages" -r ./requirements.txt
         displayName: 'Install Depencies'
