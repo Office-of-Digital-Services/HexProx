@@ -20,11 +20,19 @@ class HexagonManager():
         self._token_info = None
         self._reauthorize_after = datetime.now(tz=UTC)
         self.token_url = token_url
+
+
+        if len(client_id) > 80 or len(client_secret) > 80 or " " in client_id or " " in client_secret or ";" in client_id or ";" in client_secret:
+            # some observed at 44 char, some at 24. This is just a sanity check. Also disallow spaces and semicolons to delimit statements to block attempted code injections early, without sending to Hexagon
+            raise PermissionError("Invalid client ID or secret")
+
         self.client_id = client_id
         self.client_secret = client_secret
 
         self.wmts_url = wmts_url
         self.url_params = url_params
+
+        self.session = requests.Session()
 
         self.default_folder = tempfile.mkdtemp(prefix="hexagon_")  # where to save tiles
 
@@ -47,8 +55,7 @@ class HexagonManager():
             body["reauthorize_after"] = reauthorize_dt
             return body
         else:
-            raise RuntimeError(
-                f"Couldn't get access token, server returned status code {response.status_code} and message {response.content}")
+            raise PermissionError(f"Couldn't get access token, server returned status code {response.status_code} and message {response.content}")
 
     @property
     def token(self):
@@ -79,16 +86,16 @@ class HexagonManager():
         url = self.wmts_url + self.url_params + f"{file_url}&access_token={self.token}"
         print(f"fetching {url}")
 
-        if url_only:
+        if url_only:  # this is for when we proxy via redirect
             return url
 
-        response = requests.get(url, stream=stream)
+        response = self.session.get(url) #, stream=stream)
 
         if response.status_code == 200:
-            if stream:
+            if stream:  # for when we proxy the whole body
                 response.raise_for_status()
                 return response  # return the whole response when they want to stream it because we'll want to get the response headers
-            else:
+            else:  # for when you want to download tiles only
                 if len(response.content) < 1000:
                     print("Likely empty tile")
                 if path is None:
