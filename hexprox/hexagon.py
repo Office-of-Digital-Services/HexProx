@@ -32,6 +32,8 @@ class HexagonManager():
         self.wmts_url = wmts_url
         self.url_params = url_params
 
+        self.session = requests.Session()
+
         self.default_folder = tempfile.mkdtemp(prefix="hexagon_")  # where to save tiles
 
     def _get_token(self):
@@ -84,16 +86,16 @@ class HexagonManager():
         url = self.wmts_url + self.url_params + f"{file_url}&access_token={self.token}"
         print(f"fetching {url}")
 
-        if url_only:
+        if url_only:  # this is for when we proxy via redirect
             return url
 
-        response = requests.get(url, stream=stream)
+        response = self.session.get(url) #, stream=stream)
 
         if response.status_code == 200:
-            if stream:
+            if stream:  # for when we proxy the whole body
                 response.raise_for_status()
                 return response  # return the whole response when they want to stream it because we'll want to get the response headers
-            else:
+            else:  # for when you want to download tiles only
                 if len(response.content) < 1000:
                     print("Likely empty tile")
                 if path is None:

@@ -1,5 +1,7 @@
 #from azurefunctions.extensions.http.fastapi import Request, StreamingResponse, Response
 
+__version__ = "2025.06.17a"
+
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse, StreamingResponse, Response
 
@@ -7,8 +9,11 @@ from base64 import b64decode
 from hashlib import sha256
 import datetime
 
-import hexagon
-from hexagon import HexagonManager, HEXAGON_TILE_EXTENSIONS
+from hexprox import hexagon
+from hexprox.hexagon import HexagonManager, HEXAGON_TILE_EXTENSIONS
+
+from hexprox.config import DEBUG
+STREAM_CHUNK_SIZE = 256000 if not DEBUG else 4096  # requests package blocks for the full read - probably OK for larger in production because instances will get spun up. May want lower in dev
 
 # salt will just be for in-memory - we're not storing anything, but just to help
 SALT = datetime.datetime.now(tz=datetime.UTC).strftime("%Y%m%d%H%M%S")
@@ -40,7 +45,7 @@ def get_client(client_id, client_secret):
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": f"HexProx is up, version {__version__}"}
 
 @app.get("/wmts/{client_id}/{client_secret}/1.0.0/HxGN_Imagery/default/WebMercator/{matrix}/{row}/{col}.{ext}")
 async def get_wmts(client_id: str, client_secret: str, matrix: int, row: int, col: int, ext: str, request: Request):
@@ -61,13 +66,15 @@ async def get_wmts(client_id: str, client_secret: str, matrix: int, row: int, co
         except PermissionError:
             return Response(status_code=403, content="Invalid credentials or inability to communicate with credential server")
 
-        def iter_response():
-            for data in response.iter_content(chunk_size=1024):
-                yield data
+        data = response.content
+        return Response(content=data, status_code=200, media_type="image/png")
+        #def iter_response():
+        #    for data in response.iter_content(chunk_size=STREAM_CHUNK_SIZE):
+        #        yield data
 
-        return StreamingResponse(iter_response())
+        #return StreamingResponse(iter_response())
     else:
-        return RedirectResponse(client.get_tile(matrix=matrix, row=row, col=col, url_only=True))
+        return RedirectResponse(url=client.get_tile(matrix=matrix, row=row, col=col, url_only=True))
 
 @app.get("/wmts/{client_id}/{client_secret}/{rest_of_path:path}")
 async def get_wmts_general(client_id: str, client_secret: str, rest_of_path: str, request: Request) -> Response:
