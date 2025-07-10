@@ -87,7 +87,7 @@ async def get_wmts_general(api_key: str, client_id: str, client_secret: str, res
     if "content-encoding" in response.headers:
         del response.headers["content-encoding"]
 
-    current_base_url = f"{request.base_url}wmts/{client_id}/{client_secret}/"
+    current_base_url = f"{request.base_url}wmts/{api_key}/{client_id}/{client_secret}/"
     rewritten_content = response.content.decode("utf-8").replace("https://services.hxgncontent.com/streaming/wmts?/", current_base_url)
 
     return Response(status_code=response.status_code,
