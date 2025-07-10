@@ -65,3 +65,4 @@ stages:
                 appName: 'fa-hexprox-dev-01'
                 package: '$(System.DefaultWorkingDirectory)/**/*.zip'  
 
+
