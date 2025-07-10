@@ -1,0 +1,68 @@
+trigger: 
+  branches:
+    include:
+      - dev
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - name: python_version
+    value: '3.12'
+
+
+stages:
+
+- stage: Build
+  displayName: Build
+  jobs:
+    - job: Build
+      displayName: Building
+      steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: $(python_version)
+          addToPath: true
+          architecture: 'x64'
+      - bash : |
+          pip install --target="./.python_packages/lib/site-packages" -r ./requirements.txt
+        displayName: 'Install Dependencies'
+
+      - task: ArchiveFiles@2
+        inputs:
+          rootFolderOrFile: '$(Build.Repository.LocalPath)'
+          includeRootFolder: false
+          archiveType: 'zip'
+          archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+          replaceExistingArchive: true
+      - task: PublishBuildArtifacts@1
+        inputs:
+          PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+          ArtifactName: 'drop'
+          publishLocation: 'Container'
+- stage: DeployDev
+  displayName: Dev
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+    - deployment: Dev
+      environment: Development
+      displayName: Deploy on Dev
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+            - task: DownloadBuildArtifacts@1
+              inputs:
+                buildType: 'current'
+                downloadType: 'single'
+                artifactName: 'drop'
+                downloadPath: '$(System.DefaultWorkingDirectory)'
+            - task: AzureFunctionApp@2
+              inputs:
+                connectedServiceNameARM: 'rg-hexprox-dev-01-service-connection'
+                appType: 'functionAppLinux'
+                isFlexConsumption: true
+                appName: 'fa1-hexprox-dev-01'
+                package: '$(System.DefaultWorkingDirectory)/**/*.zip'  
+
+
