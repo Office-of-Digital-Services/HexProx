@@ -1,6 +1,6 @@
 #from azurefunctions.extensions.http.fastapi import Request, StreamingResponse, Response
 
-__version__ = "2025.07.10a"
+__version__ = "2025.07.30a"
 
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse, StreamingResponse, Response
@@ -47,7 +47,7 @@ def get_client(client_id, client_secret):
 async def root():
     return {"message": f"HexProx is up, version {__version__}"}
 
-@app.get("/wmts/{api_key}/{client_id}/{client_secret}/1.0.0/HxGN_Imagery/default/WebMercator/{matrix}/{row}/{col}.{ext}")
+@app.get("/v1/wmts/{api_key}/{client_id}/{client_secret}/1.0.0/HxGN_Imagery/default/WebMercator/{matrix}/{row}/{col}.{ext}")
 async def get_wmts(api_key: str, client_id: str, client_secret: str, matrix: int, row: int, col: int, ext: str, request: Request):
 
     if ext not in HEXAGON_TILE_EXTENSIONS:
@@ -76,7 +76,7 @@ async def get_wmts(api_key: str, client_id: str, client_secret: str, matrix: int
     else:
         return RedirectResponse(url=client.get_tile(matrix=matrix, row=row, col=col, url_only=True))
 
-@app.get("/wmts/{api_key}/{client_id}/{client_secret}/{rest_of_path:path}")
+@app.get("/v1/wmts/{api_key}/{client_id}/{client_secret}/{rest_of_path:path}")
 async def get_wmts_general(api_key: str, client_id: str, client_secret: str, rest_of_path: str, request: Request) -> Response:
     try:
         client = get_client(client_id, client_secret)
