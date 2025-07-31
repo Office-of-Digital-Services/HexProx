@@ -30,6 +30,7 @@ CLIENTS = {}
 def get_client(client_id, client_secret):
     client_id = b64decode(client_id).decode("utf-8")
     client_secret = b64decode(client_secret).decode("utf-8")
+
     print(client_id)
     print(client_secret)
     client_hash = get_hash(client_id, client_secret)  # this way there's no good way to get the secrets from this object, even if they're stored on the individual objects - probably overkill
@@ -38,7 +39,8 @@ def get_client(client_id, client_secret):
     if client_hash in CLIENTS:
         client = CLIENTS[client_hash]
     else:
-        client = HexagonManager(client_id=client_id, client_secret=client_secret, wmts_url=hexagon.STREAMING_WMTS_URL)
+        # When we create the manager, strip off any spaces in the client ID and secret - don't do it earlier - that way we can skip the replace on re-used requests
+        client = HexagonManager(client_id=client_id.replace(" ", ""), client_secret=client_secret.replace(" ", ""), wmts_url=hexagon.STREAMING_WMTS_URL)
         CLIENTS[client_hash] = client
 
     return client
