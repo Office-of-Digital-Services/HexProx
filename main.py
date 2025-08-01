@@ -50,7 +50,7 @@ async def root():
     return {"message": f"HexProx is up, version {__version__}"}
 
 @app.get("/v1/wmts/{api_key}/{client_id}/{client_secret}/1.0.0/HxGN_Imagery/default/WebMercator/{matrix}/{row}/{col}.{ext}")
-async def get_wmts(api_key: str, client_id: str, client_secret: str, matrix: int, row: int, col: int, ext: str, request: Request):
+async def get_wmts_tile(api_key: str, client_id: str, client_secret: str, matrix: int, row: int, col: int, ext: str, request: Request):
 
     if ext not in HEXAGON_TILE_EXTENSIONS:
         return Response(status_code=404, content=f"File extension {ext} not supported")
@@ -78,8 +78,8 @@ async def get_wmts(api_key: str, client_id: str, client_secret: str, matrix: int
     else:
         return RedirectResponse(url=client.get_tile(matrix=matrix, row=row, col=col, url_only=True))
 
-@app.get("/v1/wmts/{api_key}/{client_id}/{client_secret}/{rest_of_path:path}")
-async def get_wmts_general(api_key: str, client_id: str, client_secret: str, rest_of_path: str, request: Request) -> Response:
+@app.get("/{api_version}/wmts/{api_key}/{client_id}/{client_secret}/{rest_of_path:path}")
+async def get_wmts_general(api_version: str, api_key: str, client_id: str, client_secret: str, rest_of_path: str, request: Request) -> Response:
     try:
         client = get_client(client_id, client_secret)
         response = client.get_general_response(rest_of_path)
@@ -89,7 +89,7 @@ async def get_wmts_general(api_key: str, client_id: str, client_secret: str, res
     if "content-encoding" in response.headers:
         del response.headers["content-encoding"]
 
-    current_base_url = f"{request.base_url}wmts/{api_key}/{client_id}/{client_secret}/"
+    current_base_url = f"{request.base_url}{api_version}/wmts/{api_key}/{client_id}/{client_secret}/"
     rewritten_content = response.content.decode("utf-8").replace("https://services.hxgncontent.com/streaming/wmts?/", current_base_url)
 
     return Response(status_code=response.status_code,
