@@ -84,9 +84,10 @@ class HexagonManager():
         filename = os.path.join(str(matrix), str(row), f"{col}.{extension}")
         file_url = f"{matrix}/{row}/{col}.{extension}"
         url = self.wmts_url + self.url_params + f"{file_url}&access_token={self.token}"
-        print(f"fetching {url}")
+        print(f"Tile URL, with token: {url}")
 
         if url_only:  # this is for when we proxy via redirect
+            print("Returning redirect")
             return url
 
         response = self.session.get(url) #, stream=stream)
