@@ -1,6 +1,6 @@
 #from azurefunctions.extensions.http.fastapi import Request, StreamingResponse, Response
 
-__version__ = "2025.07.30a"
+__version__ = "2025.08.01a"
 
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse, StreamingResponse, Response
@@ -31,8 +31,6 @@ def get_client(client_id, client_secret):
     client_id = b64decode(client_id).decode("utf-8")
     client_secret = b64decode(client_secret).decode("utf-8")
 
-    print(client_id)
-    print(client_secret)
     client_hash = get_hash(client_id, client_secret)  # this way there's no good way to get the secrets from this object, even if they're stored on the individual objects - probably overkill
 
     # find out if we already have a client for this user - if so, use it - we could end up racing if they hit us with a bunch of requests though
@@ -69,12 +67,8 @@ async def get_wmts_tile(api_key: str, client_id: str, client_secret: str, matrix
             return Response(status_code=403, content="Invalid credentials or inability to communicate with credential server")
 
         data = response.content
+        print("Returning fully proxied data response")
         return Response(content=data, status_code=200, media_type="image/png")
-        #def iter_response():
-        #    for data in response.iter_content(chunk_size=STREAM_CHUNK_SIZE):
-        #        yield data
-
-        #return StreamingResponse(iter_response())
     else:
         return RedirectResponse(url=client.get_tile(matrix=matrix, row=row, col=col, url_only=True))
 
