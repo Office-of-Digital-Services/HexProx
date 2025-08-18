@@ -13,7 +13,8 @@
   },
   "extensions": {
     "http": {
-      "routePrefix": ""
+      "routePrefix": "",
+      "methods": ["HEAD", "GET", "OPTIONS"]
     }
   }
 }

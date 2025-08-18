@@ -4,12 +4,13 @@ __version__ = "2025.08.01a"
 
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse, StreamingResponse, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 from base64 import b64decode
 from hashlib import sha256
 import datetime
 
-from hexprox import hexagon
+from hexprox import hexagon, config
 from hexprox.hexagon import HexagonManager, HEXAGON_TILE_EXTENSIONS
 
 from hexprox.config import DEBUG
@@ -20,10 +21,15 @@ SALT = datetime.datetime.now(tz=datetime.UTC).strftime("%Y%m%d%H%M%S")
 
 def get_hash(client_id, client_secret, salt=SALT):
     return sha256(f"{client_id}:{client_secret}:{salt}".encode("utf-8")).hexdigest()  # hexdigest formats the hash as a string we can store
-
-
-
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=config.ORIGINS,
+    allow_credentials=False,
+    allow_methods=["HEAD", "GET", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 CLIENTS = {}
 
@@ -42,9 +48,8 @@ def get_client(client_id, client_secret):
         CLIENTS[client_hash] = client
 
     return client
-
 @app.get("/")
-async def root():
+async def root_get():
     return {"message": f"HexProx is up, version {__version__}"}
 
 @app.get("/v1/wmts/{api_key}/{client_id}/{client_secret}/1.0.0/HxGN_Imagery/default/WebMercator/{matrix}/{row}/{col}.{ext}")
@@ -68,7 +73,9 @@ async def get_wmts_tile(api_key: str, client_id: str, client_secret: str, matrix
 
         data = response.content
         print("Returning fully proxied data response")
-        return Response(content=data, status_code=200, media_type="image/png")
+        return Response(content=data,
+                        status_code=200,
+                        media_type="image/png")
     else:
         return RedirectResponse(url=client.get_tile(matrix=matrix, row=row, col=col, url_only=True))
 
