@@ -59,7 +59,7 @@ stages:
                 downloadPath: '$(System.DefaultWorkingDirectory)'
             - task: AzureFunctionApp@2
               inputs:
-                connectedServiceNameARM: 'rg-hexprox-dev-01-service-connection'
+                connectedServiceNameARM: '2ae59023-0256-4b73-b518-630ed38046e1'
                 appType: 'functionAppLinux'
                 isFlexConsumption: true
                 appName: 'fa1-hexprox-dev-01'
