@@ -88,7 +88,7 @@ stages:
                 connectedServiceNameARM: '187e7ab1-3abf-41c4-aaa5-25ffcd13575b'
                 appType: 'functionAppLinux'
                 isFlexConsumption: true
-                appName: 'fa1-hexprox-dev-01'
+                appName: 'fa1-hexprox-prd-01'
                 package: '$(System.DefaultWorkingDirectory)/**/*.zip'  
 
 
