@@ -66,9 +66,12 @@ class HexagonManager():
                 "reauthorize_after"]  # keep track of when we should reauthorize again in the future.
         return self._token_info["access_token"]
 
-    def get_general_response(self, path):
-        url = self.wmts_url + f"{path}&access_token={self.token}"
-        return requests.get(url)
+    def get_general_response(self, path, params=None):
+        if params is None:
+            params = {}
+        url = f"{self.wmts_url}{path}"
+        merged_params = {"access_token": self.token, **params}  # even if the url has params already in it, these will get attached properly by requests
+        return requests.get(url, params=merged_params)
 
     def get_tile(self, matrix, row, col, path=None, stream=False, url_only=False, extension="png"):
         """
