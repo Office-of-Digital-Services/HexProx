@@ -11,9 +11,6 @@ import random
 import os
 import json
 
-from azure.keyvault.secrets import SecretClient
-from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
-
 from fastapi import FastAPI, Request, BackgroundTasks, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,6 +23,14 @@ from hexprox import hexagon, config
 from hexprox.hexagon import HexagonManager, HEXAGON_TILE_EXTENSIONS
 
 from hexprox.config import DEBUG
+
+try:
+    from azure.keyvault.secrets import SecretClient
+    from azure.identity import ManagedIdentityCredential
+except:
+    # this isn't correct - this part of the code runs on startup not in response to a request
+    raise HTTPException(status_code=500, detail="Unable to azure secrets and identity libraries")
+
 STREAM_CHUNK_SIZE = 256000 if not DEBUG else 4096  # requests package blocks for the full read - probably OK for larger in production because instances will get spun up. May want lower in dev
 
 # salt will just be for in-memory - we're not storing anything, but just to help
@@ -51,12 +56,12 @@ try:
     KEY_VAULT_NAME = os.environ["KEY_VAULT_NAME"]
     KEY_VAULT_URI = f"https://{KEY_VAULT_NAME}.vault.azure.net"
 
-    AZURE_CREDENTIAL = DefaultAzureCredential() #ManagedIdentityCredential()
+    AZURE_CREDENTIAL = ManagedIdentityCredential()
     KEY_VAULT_CLIENT = SecretClient(vault_url=KEY_VAULT_URI, credential=AZURE_CREDENTIAL)
     print("Checkpoint - key vault loaded")
 except:
-    print("error loading key vault")
-    # this is just for debug and needs to be removed
+    # this isn't correct - this part of the code runs on startup not in response to a request
+    raise HTTPException(status_code=500, detail="Unable to load key vault")
 
 def get_client(client_id, client_secret, api_version="v2"):
     global CLIENTS
