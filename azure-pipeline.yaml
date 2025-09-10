@@ -1,0 +1,97 @@
+trigger: 
+  branches:
+    include:
+      - dev
+      - release
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - name: python_version
+    value: '3.12'
+  - name: is_release
+    value: $[eq(variables['Build.SourceBranch'], 'refs/heads/release')]
+  - name: is_dev
+    value: $[eq(variables['Build.SourceBranch'], 'refs/heads/dev')]
+stages:
+
+- stage: Build
+  displayName: Build
+  jobs:
+    - job: Build
+      displayName: Building
+      steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: $(python_version)
+          addToPath: true
+          architecture: 'x64'
+      - bash : |
+          pip install --target="./.python_packages/lib/site-packages" -r ./requirements.txt
+        displayName: 'Install Dependencies'
+
+      - task: ArchiveFiles@2
+        inputs:
+          rootFolderOrFile: '$(Build.Repository.LocalPath)'
+          includeRootFolder: false
+          archiveType: 'zip'
+          archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+          replaceExistingArchive: true
+      - task: PublishBuildArtifacts@1
+        inputs:
+          PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+          ArtifactName: 'drop'
+          publishLocation: 'Container'
+- stage: DeployDev
+  displayName: Dev
+  dependsOn: Build
+  condition: and(succeeded(), eq(variables.is_dev, true))
+  jobs:
+    - deployment: Dev
+      environment: Development
+      displayName: Deploy on Dev
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+            - task: DownloadBuildArtifacts@1
+              inputs:
+                buildType: 'current'
+                downloadType: 'single'
+                artifactName: 'drop'
+                downloadPath: '$(System.DefaultWorkingDirectory)'
+            - task: AzureFunctionApp@2
+              inputs:
+                connectedServiceNameARM: '2ae59023-0256-4b73-b518-630ed38046e1'
+                appType: 'functionAppLinux'
+                isFlexConsumption: true
+                appName: 'fa1-hexprox-dev-01'
+                package: '$(System.DefaultWorkingDirectory)/**/*.zip'
+
+- stage: DeployProd
+  displayName: Prod
+  dependsOn: Build
+  condition: and(succeeded(), eq(variables.is_release, true))
+  jobs:
+    - deployment: Prod
+      environment: Production
+      displayName: Deploy on Production
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+            - task: DownloadBuildArtifacts@1
+              inputs:
+                buildType: 'current'
+                downloadType: 'single'
+                artifactName: 'drop'
+                downloadPath: '$(System.DefaultWorkingDirectory)'
+            - task: AzureFunctionApp@2
+              inputs:
+                connectedServiceNameARM: '187e7ab1-3abf-41c4-aaa5-25ffcd13575b'
+                appType: 'functionAppLinux'
+                isFlexConsumption: true
+                appName: 'fa1-hexprox-prd-01'
+                package: '$(System.DefaultWorkingDirectory)/**/*.zip'  
+
+
