@@ -26,7 +26,7 @@ from hexprox.config import DEBUG
 
 try:
     from azure.keyvault.secrets import SecretClient
-    from azure.identity import ManagedIdentityCredential
+    from azure.identity import ManagedIdentityCredential, DefaultAzureCredential
 except:
     # this isn't correct - this part of the code runs on startup not in response to a request
     raise HTTPException(status_code=500, detail="Unable to azure secrets and identity libraries")
@@ -56,7 +56,7 @@ try:
     KEY_VAULT_NAME = os.environ["KEY_VAULT_NAME"]
     KEY_VAULT_URI = f"https://{KEY_VAULT_NAME}.vault.azure.net"
 
-    AZURE_CREDENTIAL = ManagedIdentityCredential()
+    AZURE_CREDENTIAL = DefaultAzureCredential()
     KEY_VAULT_CLIENT = SecretClient(vault_url=KEY_VAULT_URI, credential=AZURE_CREDENTIAL)
     print("Checkpoint - key vault loaded")
 except:
@@ -172,11 +172,11 @@ async def get_credentials_for_api_key(api_key: str, background_tasks: Background
     """
         Credential sets should have the structure of the form:
         {
-            'count': 3,
-            'sets': [
-                {'client_id': 'value', 'client_secret': 'value'},
-                {'client_id': 'value', 'client_secret': 'value'},
-                {'client_id': 'value', 'client_secret': 'value'},
+            "count": 3,
+            "sets": [
+                {"client_id": "value", "client_secret": "value"},
+                {"client_id": "value", "client_secret": "value"},
+                {"client_id": "value", "client_secret": "value"}
             ]
         }
 
