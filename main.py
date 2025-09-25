@@ -28,7 +28,8 @@ from hexprox.config import DEBUG
 
 try:
     from azure.keyvault.secrets import SecretClient
-    from azure.identity import ManagedIdentityCredential, DefaultAzureCredential
+    from azure.core import exceptions as azure_exceptions
+    from azure.identity import ManagedIdentityCredential
 except:
     # this isn't correct - this part of the code runs on startup not in response to a request
     raise HTTPException(status_code=500, detail="Unable to azure secrets and identity libraries")
@@ -190,20 +191,22 @@ async def get_credentials_for_api_key(api_key: str, background_tasks: Background
     :return:
     """
     global API_KEYS
+    try:
+        if api_key not in API_KEYS:  # if we haven't already cached the credentials for this API key locally, then do it now
+            print("retrieving credentials for api key from key vault")
+            await _retrieve_credentials(api_key)
+        else:  # if it's already there, schedule a refresh for after the request is complete - it'll only actually refresh at specific intervals.
+            background_tasks.add_task(refresh_credentials, api_key)
 
-    if api_key not in API_KEYS:  # if we haven't already cached the credentials for this API key locally, then do it now
-        print("retrieving credentials for api key from key vault")
-        await _retrieve_credentials(api_key)
-    else:  # if it's already there, schedule a refresh for after the request is complete - it'll only actually refresh at specific intervals.
-        background_tasks.add_task(refresh_credentials, api_key)
+        if api_key not in API_KEYS:  # if it's *still* not there, then the credentials were invalid
+            raise HTTPException(status_code=403, detail="Invalid API key or API key lacks permissions for this resource")
 
-    if api_key not in API_KEYS:  # if it's *still* not there, then the credentials were invalid
-        raise HTTPException(status_code=403, detail="Invalid API Key or API Key lacks permissions for this resource")
-
-    credential_set = API_KEYS[api_key]
+        credential_set = API_KEYS[api_key]
+    except azure_exceptions.ResourceNotFoundError:
+        raise HTTPException(status_code=403, detail="Invalid API key, malformed secret data, or API key lacks permissions for this resource")
 
     if type(credential_set) is not dict or "count" not in credential_set:
-        raise HTTPException(status_code=403, detail="Invalid API Key, malformed secret data, or API Key lacks permissions for this resource")
+        raise HTTPException(status_code=403, detail="Invalid API key, malformed secret data, or API key lacks permissions for this resource")
 
     num_sets = credential_set['count']   # we may store multiple credentials - rather than running a length operation each time, just pull the stored value
     if num_sets > 1:
