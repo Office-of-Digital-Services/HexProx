@@ -199,14 +199,14 @@ async def get_credentials_for_api_key(api_key: str, background_tasks: Background
             background_tasks.add_task(refresh_credentials, api_key)
 
         if api_key not in API_KEYS:  # if it's *still* not there, then the credentials were invalid
-            raise HTTPException(status_code=403, detail="Invalid API Key or API Key lacks permissions for this resource")
+            raise HTTPException(status_code=403, detail="Invalid API key or API key lacks permissions for this resource")
 
         credential_set = API_KEYS[api_key]
     except azure_exceptions.ResourceNotFoundError:
-        raise HTTPException(status_code=403, detail="Invalid API Key, malformed secret data, or API Key lacks permissions for this resource")
+        raise HTTPException(status_code=403, detail="Invalid API key, malformed secret data, or API key lacks permissions for this resource")
 
     if type(credential_set) is not dict or "count" not in credential_set:
-        raise HTTPException(status_code=403, detail="Invalid API Key, malformed secret data, or API Key lacks permissions for this resource")
+        raise HTTPException(status_code=403, detail="Invalid API key, malformed secret data, or API key lacks permissions for this resource")
 
     num_sets = credential_set['count']   # we may store multiple credentials - rather than running a length operation each time, just pull the stored value
     if num_sets > 1:
