@@ -10,6 +10,8 @@ __description__ = "A proxy service for Hexagon imagery that supports WMTS and WM
 import random
 import os
 import json
+import logging
+import traceback
 
 from fastapi import FastAPI, Request, BackgroundTasks, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse, Response
@@ -56,12 +58,13 @@ try:
     KEY_VAULT_NAME = os.environ["KEY_VAULT_NAME"]
     KEY_VAULT_URI = f"https://{KEY_VAULT_NAME}.vault.azure.net"
 
-    AZURE_CREDENTIAL = DefaultAzureCredential()
+    managed_identity_id = os.environ["MANAGED_IDENTITY_CLIENT_ID"]
+    AZURE_CREDENTIAL = ManagedIdentityCredential(client_id=managed_identity_id)
     KEY_VAULT_CLIENT = SecretClient(vault_url=KEY_VAULT_URI, credential=AZURE_CREDENTIAL)
     print("Checkpoint - key vault loaded")
-except:
+except Exception as e:
     # this isn't correct - this part of the code runs on startup not in response to a request
-    raise HTTPException(status_code=500, detail="Unable to load key vault")
+    raise Exception(f"Unable to load key vault: {traceback.format_exc(e)}")
 
 def get_client(client_id, client_secret, api_version="v2"):
     global CLIENTS
@@ -177,7 +180,9 @@ async def get_credentials_for_api_key(api_key: str, background_tasks: Background
                 {"client_id": "value", "client_secret": "value"},
                 {"client_id": "value", "client_secret": "value"},
                 {"client_id": "value", "client_secret": "value"}
-            ]
+            ],
+            "org": "Org name",
+            "contact": "Contact name"
         }
 
         This rotates between these sets in a random manner
@@ -205,5 +210,10 @@ async def get_credentials_for_api_key(api_key: str, background_tasks: Background
         random.seed() # uses the time by default - this doesn't need to be secure, just trying to distribute credential requests
         index = random.randint(0, num_sets-1)  # get which set to use - this is inclusive of both ends of the range, but we're going to index a list, so need to drop 1
 
-    print(f"credential index: {index} of {num_sets} sets")
+    if "org" in credential_set:
+        properties = {'custom_dimensions': {'organization_from_key': credential_set['org']}}
+        logging.info('Processing request', extra=properties)
+
+
+    logging.debug(f"credential index: {index} of {num_sets} sets")
     return credential_set['sets'][index]
