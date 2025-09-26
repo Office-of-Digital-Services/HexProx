@@ -60,8 +60,12 @@ try:
     KEY_VAULT_CLIENT = SecretClient(vault_url=KEY_VAULT_URI, credential=AZURE_CREDENTIAL)
     print("Checkpoint - key vault loaded")
 except Exception as e:
-    # this isn't correct - this part of the code runs on startup not in response to a request
-    raise Exception(f"Unable to load key vault: {traceback.format_exc(e)}")
+    if not config.TEST: ## In the testing environment we won't connect to the secrets manager. We'll mock it out
+        # this isn't correct - this part of the code runs on startup not in response to a request
+        raise Exception(f"Unable to load key vault: {traceback.format_exc(e)}")
+    else:
+        from unittest.mock import MagicMock
+        KEY_VAULT_CLIENT = MagicMock(spec=SecretClient)
 
 def get_client(client_id, client_secret, api_version="v2"):
     global CLIENTS

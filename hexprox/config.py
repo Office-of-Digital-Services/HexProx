@@ -1,4 +1,7 @@
+import os
+
 DEBUG = False
+TEST = True if os.environ.get('PYTEST_VERSION') else False
 
 REFRESH_CREDENTIAL_INTERVAL_MINUTES = 30
 
