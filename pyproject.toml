@@ -1,6 +1,6 @@
 [project]
 name = "hexprox"
-version = "0.1.0"
+version = "0.2.0"
 description = "Add your description here"
 requires-python = ">=3.12"
 dependencies = [
@@ -11,4 +11,12 @@ dependencies = [
     "azure-identity",
     "azure-keyvault",
     "azure-keyvault-secrets"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.4.1",
+    "pytest-asyncio>=0.23.8",
+    "httpx>=0.27.0",
+    "pytest-mock>=3.14.0",
 ]

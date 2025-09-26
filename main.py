@@ -1,20 +1,17 @@
 #from azurefunctions.extensions.http.fastapi import Request, StreamingResponse, Response
 
-__version__ = "2025.09.09a"
+__version__ = "2025.09.26a"
 __author__ = "Nick Santos"
 __license__ = "MIT"
 __copyright__ = "Copyright 2025 California Department of Technology"
 __status__ = "Development"
-__description__ = "A proxy service for Hexagon imagery that supports WMTS and WMS requests."
+__description__ = "A proxy service for Hexagon imagery that supports WMTS and (in the future) WMS requests."
 
-import random
 import os
-import json
-import logging
 import traceback
 
 from fastapi import FastAPI, Request, BackgroundTasks, HTTPException
-from fastapi.responses import RedirectResponse, StreamingResponse, Response
+from fastapi.responses import RedirectResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from base64 import b64decode
@@ -23,6 +20,7 @@ import datetime
 
 from hexprox import hexagon, config
 from hexprox.hexagon import HexagonManager, HEXAGON_TILE_EXTENSIONS
+from hexprox.key_manager import APIKeyManager
 
 from hexprox.config import DEBUG
 
@@ -53,8 +51,6 @@ app.add_middleware(
 
 CLIENTS = {}
 
-API_KEYS = {}
-
 try:
     KEY_VAULT_NAME = os.environ["KEY_VAULT_NAME"]
     KEY_VAULT_URI = f"https://{KEY_VAULT_NAME}.vault.azure.net"
@@ -83,14 +79,19 @@ def get_client(client_id, client_secret, api_version="v2"):
         CLIENTS[client_hash] = client
 
     return client
+
+
+API_KEY_MANAGER = APIKeyManager()
+
+
 @app.get("/")
 async def root_get():
-    return {"message": f"Service is up"}
+    return {"message": f"Service is up."}
 
 @app.get("/about/{api_key}")
-async def about_page(api_key: str, background_tasks: BackgroundTasks):
-    await get_credentials_for_api_key(api_key, background_tasks)  # we don't actually need the creds, we just want to make sure the API key is valid
-    return {"message": f"Service is up. Version {__version__}"}
+async def about_page(api_key: str, request: Request, background_tasks: BackgroundTasks):
+    await API_KEY_MANAGER.get_credentials_for_api_key(api_key, KEY_VAULT_CLIENT, background_tasks, request)  # we don't actually need the creds, we just want to make sure the API key is valid
+    return {"message": f"Service is up. HexProx version {__version__}"}
 
 @app.get("/v1/wmts/{api_key}/{client_id}/{client_secret}/1.0.0/HxGN_Imagery/default/WebMercator/{matrix}/{row}/{col}.{ext}")
 async def get_wmts_tile(api_key: str, client_id: str, client_secret: str, matrix: int, row: int, col: int, ext: str, request: Request):
@@ -98,7 +99,7 @@ async def get_wmts_tile(api_key: str, client_id: str, client_secret: str, matrix
 
 @app.get("/v2/wmts/{api_key}/1.0.0/HxGN_Imagery/default/WebMercator/{matrix}/{row}/{col}.{ext}")
 async def get_wmts_tile_v2(api_key: str, matrix: int, row: int, col: int, ext: str, request: Request, background_tasks: BackgroundTasks):
-    credentials = await get_credentials_for_api_key(api_key, background_tasks)
+    credentials = await API_KEY_MANAGER.get_credentials_for_api_key(api_key, KEY_VAULT_CLIENT, background_tasks, request)
     return await get_wmts_tile_response("v2", credentials['client_id'], credentials['client_secret'], col, ext, matrix, request, row)
 
 
@@ -135,7 +136,7 @@ async def get_wmts_general(api_key: str, client_id: str, client_secret: str, res
                                                    rest_of_path)
 @app.get("/v2/wmts/{api_key}/{rest_of_path:path}")
 async def get_wmts_general_v2(api_key: str, rest_of_path: str, request: Request, background_tasks: BackgroundTasks) -> Response:
-    credentials = await get_credentials_for_api_key(api_key, background_tasks)
+    credentials = await API_KEY_MANAGER.get_credentials_for_api_key(api_key, KEY_VAULT_CLIENT, background_tasks, request)
     return await credentialed_wmts_service_response(api_key, "v2", credentials['client_id'], credentials['client_secret'], request,
                                                    rest_of_path)
 
@@ -160,63 +161,3 @@ async def credentialed_wmts_service_response(api_key, api_version, client_id, cl
                     # headers=response.headers,  # we may still want to translate *some* of these over
                     media_type="application/xml",
                     content=rewritten_content)
-
-
-async def refresh_credentials(api_key: str):
-    refresh_time = datetime.datetime.now(tz=datetime.UTC)
-    if refresh_time > API_KEYS[api_key]['last_refreshed'] + datetime.timedelta(minutes=config.REFRESH_CREDENTIAL_INTERVAL_MINUTES):
-        await _retrieve_credentials(api_key)
-
-async def _retrieve_credentials(api_key: str, key_vault_client=KEY_VAULT_CLIENT):
-    global API_KEYS
-    API_KEYS[api_key] = json.loads(key_vault_client.get_secret(f"credential-set-{api_key}").value)
-    API_KEYS[api_key]['last_refreshed'] = datetime.datetime.now(tz=datetime.UTC)  # mark when we last retrieved these
-
-async def get_credentials_for_api_key(api_key: str, background_tasks: BackgroundTasks) -> dict:
-    """
-        Credential sets should have the structure of the form:
-        {
-            "count": 3,
-            "sets": [
-                {"client_id": "value", "client_secret": "value"},
-                {"client_id": "value", "client_secret": "value"},
-                {"client_id": "value", "client_secret": "value"}
-            ],
-            "org": "Org name",
-            "contact": "Contact name"
-        }
-
-        This rotates between these sets in a random manner
-    :param api_key:
-    :return:
-    """
-    global API_KEYS
-    try:
-        if api_key not in API_KEYS:  # if we haven't already cached the credentials for this API key locally, then do it now
-            print("retrieving credentials for api key from key vault")
-            await _retrieve_credentials(api_key)
-        else:  # if it's already there, schedule a refresh for after the request is complete - it'll only actually refresh at specific intervals.
-            background_tasks.add_task(refresh_credentials, api_key)
-
-        if api_key not in API_KEYS:  # if it's *still* not there, then the credentials were invalid
-            raise HTTPException(status_code=403, detail="Invalid API key or API key lacks permissions for this resource")
-
-        credential_set = API_KEYS[api_key]
-    except azure_exceptions.ResourceNotFoundError:
-        raise HTTPException(status_code=403, detail="Invalid API key, malformed secret data, or API key lacks permissions for this resource")
-
-    if type(credential_set) is not dict or "count" not in credential_set:
-        raise HTTPException(status_code=403, detail="Invalid API key, malformed secret data, or API key lacks permissions for this resource")
-
-    num_sets = credential_set['count']   # we may store multiple credentials - rather than running a length operation each time, just pull the stored value
-    if num_sets > 1:
-        random.seed() # uses the time by default - this doesn't need to be secure, just trying to distribute credential requests
-        index = random.randint(0, num_sets-1)  # get which set to use - this is inclusive of both ends of the range, but we're going to index a list, so need to drop 1
-
-    if "org" in credential_set:
-        properties = {'custom_dimensions': {'organization_from_key': credential_set['org']}}
-        logging.info('Processing request', extra=properties)
-
-
-    logging.debug(f"credential index: {index} of {num_sets} sets")
-    return credential_set['sets'][index]
