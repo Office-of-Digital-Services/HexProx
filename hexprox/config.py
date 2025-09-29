@@ -11,5 +11,6 @@ ORIGINS = [
     "https://docgis.conservation.ca.gov",
     "https://gis.conservation.ca.gov",
     "https://gisportal.co.fresno.ca.us",
-    "https://gispublic.waterboards.ca.gov"
+    "https://gispublic.waterboards.ca.gov",
+    "https://california.maps.arcgis.com"
 ]
