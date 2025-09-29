@@ -26,9 +26,14 @@ stages:
           versionSpec: $(python_version)
           addToPath: true
           architecture: 'x64'
+
       - bash : |
           pip install --target="./.python_packages/lib/site-packages" -r ./requirements.txt
         displayName: 'Install Dependencies'
+      - bash : |
+          cp ./hexprox/deployment_vars_template.py ./hexprox/deployment_vars.py
+          python -c "from hexprox import deployment_vars;assert deployment_vars.DEBUG is False;"
+        displayName: 'Set Variables and Confirm Debug is False'
 
       - task: ArchiveFiles@2
         inputs:
