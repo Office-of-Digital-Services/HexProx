@@ -1,5 +1,5 @@
 # Custom added
-hexprox/deployment_vars_template.py
+hexprox/deployment_vars.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
