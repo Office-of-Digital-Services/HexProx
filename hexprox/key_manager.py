@@ -69,6 +69,8 @@ class APIKeyManager:
         if num_sets > 1:
             random.seed() # uses the time by default - this doesn't need to be secure, just trying to distribute credential requests
             index = random.randint(0, num_sets-1)  # get which set to use - this is inclusive of both ends of the range, but we're going to index a list, so need to drop 1
+        else:
+            index = 0
 
         if "org" in credential_set:
             properties = {'custom_dimensions': {'organization_from_key': credential_set['org']}}
