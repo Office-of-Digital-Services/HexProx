@@ -26,6 +26,9 @@ class APIKeyManager:
         if refresh_time > self.api_keys[api_key]['last_refreshed'] + datetime.timedelta(minutes=config.REFRESH_CREDENTIAL_INTERVAL_MINUTES):
             await self._retrieve_credentials(api_key, key_vault_client=key_vault_client)
 
+    async def force_refresh_credentials(self, api_key: str, key_vault_client: SecretClient):
+        await self._retrieve_credentials(api_key, key_vault_client=key_vault_client)
+
     async def _retrieve_credentials(self, api_key: str, key_vault_client: SecretClient):
         self.api_keys[api_key] = json.loads(key_vault_client.get_secret(f"credential-set-{api_key}").value)
         self.api_keys[api_key]['last_refreshed'] = datetime.datetime.now(tz=datetime.UTC)  # mark when we last retrieved these
@@ -69,11 +72,15 @@ class APIKeyManager:
         if num_sets > 1:
             random.seed() # uses the time by default - this doesn't need to be secure, just trying to distribute credential requests
             index = random.randint(0, num_sets-1)  # get which set to use - this is inclusive of both ends of the range, but we're going to index a list, so need to drop 1
+        else:
+            index = 0
 
+        properties = {'custom_dimensions': {'organization_from_key': 'unknown'}}
         if "org" in credential_set:
-            properties = {'custom_dimensions': {'organization_from_key': credential_set['org']}}
-            logging.info('Processing request', extra=properties)
+            properties['custom_dimensions']['organization_from_key'] = credential_set['org']
+
+        logging.info(f'Processing request for {credential_set["org"]}', extra=properties)
 
 
-        logging.debug(f"credential index: {index} of {num_sets} sets")
+        #logging.debug(f"credential index: {index} of {num_sets} sets")
         return credential_set['sets'][index]

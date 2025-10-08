@@ -50,7 +50,7 @@ stages:
 - stage: DeployDev
   displayName: Dev
   dependsOn: Build
-  condition: and(succeeded(), eq(variables.is_dev, true))
+  condition: and(and(succeeded(), eq(variables.is_dev, true)), eq(variables.is_release, false))
   jobs:
     - deployment: Dev
       environment: Development
@@ -76,7 +76,7 @@ stages:
 - stage: DeployProd
   displayName: Prod
   dependsOn: Build
-  condition: and(succeeded(), eq(variables.is_release, true))
+  condition: and(and(succeeded(), eq(variables.is_release, true)), eq(variables.is_dev, false))
   jobs:
     - deployment: Prod
       environment: Production

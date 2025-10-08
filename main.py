@@ -67,6 +67,11 @@ except Exception as e:
         from unittest.mock import MagicMock
         KEY_VAULT_CLIENT = MagicMock(spec=SecretClient)
 
+try:
+    BASE_URL = os.environ.get("BASE_URL", None)
+except:
+    BASE_URL = None
+
 def get_client(client_id, client_secret, api_version="v2"):
     global CLIENTS
     if api_version == "v1":  # running the replace operation here slows things down relative to if it was post-hash in the client, but that's fine because we expect to phase out v1
@@ -106,6 +111,15 @@ async def get_wmts_tile_v2(api_key: str, matrix: int, row: int, col: int, ext: s
     credentials = await API_KEY_MANAGER.get_credentials_for_api_key(api_key, KEY_VAULT_CLIENT, background_tasks, request)
     return await get_wmts_tile_response("v2", credentials['client_id'], credentials['client_secret'], col, ext, matrix, request, row)
 
+@app.get("/v2/nokeycache/wmts/{api_key}/1.0.0/HxGN_Imagery/default/WebMercator/{matrix}/{row}/{col}.{ext}")
+async def get_wmts_tile_v2_nokeycache(api_key: str, matrix: int, row: int, col: int, ext: str, request: Request, background_tasks: BackgroundTasks):
+    """
+        This is kind of a funky way to do this, but I didn't want another if statement in the other logic. Instead, we'll
+        just force the key cache to reset the current key, then run get_wmts_tile_v2
+    """
+    await API_KEY_MANAGER.force_refresh_credentials(api_key, KEY_VAULT_CLIENT)
+    return await get_wmts_tile_v2(api_key, matrix, row, col, ext, request, background_tasks)
+
 
 async def get_wmts_tile_response(api_version, client_id, client_secret, col, ext, matrix, request, row):
     if ext not in HEXAGON_TILE_EXTENSIONS:
@@ -144,7 +158,7 @@ async def get_wmts_general_v2(api_key: str, rest_of_path: str, request: Request,
     return await credentialed_wmts_service_response(api_key, "v2", credentials['client_id'], credentials['client_secret'], request,
                                                    rest_of_path)
 
-async def credentialed_wmts_service_response(api_key, api_version, client_id, client_secret, request, rest_of_path):
+async def credentialed_wmts_service_response(api_key, api_version, client_id, client_secret, request, rest_of_path, base_url=BASE_URL):
     try:
         client = get_client(client_id, client_secret, api_version=api_version)
         response = client.get_general_response(rest_of_path, params=request.query_params)
@@ -157,7 +171,9 @@ async def credentialed_wmts_service_response(api_key, api_version, client_id, cl
     if api_version == "v1":
         current_base_url = f"{request.base_url}{api_version}/wmts/{api_key}/{client_id}/{client_secret}/"
     else:
-        current_base_url = f"{request.base_url}{api_version}/wmts/{api_key}/"
+        if not base_url:
+            base_url = request.base_url
+        current_base_url = f"{base_url}{api_version}/wmts/{api_key}/"
 
     rewritten_content = response.content.decode("utf-8").replace("https://services.hxgncontent.com/streaming/wmts?/",
                                                                  current_base_url)
