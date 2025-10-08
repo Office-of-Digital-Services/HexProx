@@ -111,6 +111,15 @@ async def get_wmts_tile_v2(api_key: str, matrix: int, row: int, col: int, ext: s
     credentials = await API_KEY_MANAGER.get_credentials_for_api_key(api_key, KEY_VAULT_CLIENT, background_tasks, request)
     return await get_wmts_tile_response("v2", credentials['client_id'], credentials['client_secret'], col, ext, matrix, request, row)
 
+@app.get("/v2/nokeycache/wmts/{api_key}/1.0.0/HxGN_Imagery/default/WebMercator/{matrix}/{row}/{col}.{ext}")
+async def get_wmts_tile_v2_nokeycache(api_key: str, matrix: int, row: int, col: int, ext: str, request: Request, background_tasks: BackgroundTasks):
+    """
+        This is kind of a funky way to do this, but I didn't want another if statement in the other logic. Instead, we'll
+        just force the key cache to reset the current key, then run get_wmts_tile_v2
+    """
+    await API_KEY_MANAGER.force_refresh_credentials(api_key, KEY_VAULT_CLIENT)
+    return await get_wmts_tile_v2(api_key, matrix, row, col, ext, request, background_tasks)
+
 
 async def get_wmts_tile_response(api_version, client_id, client_secret, col, ext, matrix, request, row):
     if ext not in HEXAGON_TILE_EXTENSIONS:
