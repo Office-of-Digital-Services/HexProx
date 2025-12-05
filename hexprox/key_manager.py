@@ -75,11 +75,12 @@ class APIKeyManager:
         else:
             index = 0
 
+        # these custom dimensions don't seem to be showing up in the Azure logs with this message.
         properties = {'custom_dimensions': {'organization_from_key': 'unknown'}}
         if "org" in credential_set:
             properties['custom_dimensions']['organization_from_key'] = credential_set['org']
 
-        logging.info(f'Processing request for {credential_set["org"]}', extra=properties)
+        logging.info(f'Request org {credential_set["org"]}', extra=properties)
 
 
         #logging.debug(f"credential index: {index} of {num_sets} sets")
