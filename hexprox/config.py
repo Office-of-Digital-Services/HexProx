@@ -14,5 +14,7 @@ ORIGINS = [
     "https://gispublic.waterboards.ca.gov",
     "https://california.maps.arcgis.com",
     "https://egis.fire.ca.gov",
-    "https://calfire-forestry.maps.arcgis.com"
+    "https://calfire-forestry.maps.arcgis.com",
+    "https://cw-gis.waterboards.ca.gov",
+    "https://cw-gis-trn.waterboards.ca.gov"
 ]
