@@ -17,4 +17,7 @@ ORIGINS = [
     "https://calfire-forestry.maps.arcgis.com",
     "https://cw-gis.waterboards.ca.gov",
     "https://cw-gis-trn.waterboards.ca.gov"
+    "https://cw-gis-dev.waterboards.ca.gov",
+    "https://cw-gis-sit.waterboards.ca.gov",
+    "https://cw-gis-stg.waterboards.ca.gov"
 ]
