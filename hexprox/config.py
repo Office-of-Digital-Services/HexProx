@@ -21,4 +21,4 @@ ORIGINS = [
     "https://cw-gis-stg.waterboards.ca.gov"
 ]
 
-ORIGINS_REGEX = "https://.*\.ca\.gov",
+ORIGINS_REGEX = "https://.*\.ca\.gov"
