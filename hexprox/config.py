@@ -1,24 +1,11 @@
 import os
+import json
 
 from .deployment_vars import *
 TEST = True if os.environ.get('PYTEST_VERSION') else False
 
 REFRESH_CREDENTIAL_INTERVAL_MINUTES = 30
 
-ORIGINS = [
-    "https://maps.conservation.ca.gov",
-    "https://docgis.conservation.ca.gov",
-    "https://gis.conservation.ca.gov",
-    "https://gisportal.co.fresno.ca.us",
-    "https://gispublic.waterboards.ca.gov",
-    "https://california.maps.arcgis.com",
-    "https://egis.fire.ca.gov",
-    "https://calfire-forestry.maps.arcgis.com",
-    "https://cw-gis.waterboards.ca.gov",
-    "https://cw-gis-trn.waterboards.ca.gov"
-    "https://cw-gis-dev.waterboards.ca.gov",
-    "https://cw-gis-sit.waterboards.ca.gov",
-    "https://cw-gis-stg.waterboards.ca.gov"
-]
+ORIGINS = json.loads(os.environ.get(json.loads("ORIGINS", '{"origins":[]}')))["origins"]
 
 ORIGINS_REGEX = "https://.*\.ca\.gov"
